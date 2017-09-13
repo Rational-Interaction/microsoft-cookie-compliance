@@ -3,13 +3,15 @@
 		"eslint:recommended"
 	],
 	"env": {
+		"browser": true,
 		"node": true,
 		"es6": true,
 		"mocha": true
 	},
 
 	"parserOptions": {
-		"sourceType": "module"
+		"sourceType": "module",
+		"ecmaVersion": 2017
 	},
 	"rules": {
 		"no-unused-vars": ["error", { "args": "none" }],

@@ -98,6 +98,48 @@ describe("express middleware", () => {
 		});
 	});
 });
+describe("koa middleware", () => {
+	beforeEach(() => {
+		this.ctx = {
+			ip: '127.0.0.1',
+			state: {},
+			cookies: {
+				get: function() {
+					return null;
+				}
+			}
+		}
+	});
+	it("pulls the correct IP from the request object", (done) => {
+		this.mscc.koa(this.ctx, () => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			done();
+		});
+	});
+	it("automatically attaches cookie compliance information to the locals", (done) => {
+		this.mscc.koa(this.ctx, () => {
+			expect(this.ctx.state.mscc).to.deep.equal(require('../mock/msccResponse.noConsent'));
+			done();
+		});
+	});
+	it("skips the cookie compliance check if the user already has given consent (tracked via cookie)", (done) => {
+		this.ctx = {
+			ip: '127.0.0.1',
+			state: {},
+			cookies: {
+				get: function() {
+					return true;
+				}
+			}
+		};
+		this.mscc.koa(this.ctx, () => {
+			expect(this.ipRequest.isDone()).to.be.false;
+			expect(this.ctx.state).to.exist;
+			expect(this.ctx.state.mscc).not.to.exist;
+			done();
+		});
+	});
+});
 describe("handlebars helper", () => {
 	it('can automatically register the helpers', () => {
 		MSCC.registerHandlebars(Handlebars);
