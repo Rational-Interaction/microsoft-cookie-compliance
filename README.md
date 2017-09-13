@@ -8,7 +8,7 @@ var MSCC = require('microsoft-cookie-compliance');
 var mscc = new MSCC({
   domain: 'partners.office.com', // Domain of the site
   siteName: 'Office 365 Partner Portal', // This should be same as name the site is registered with on the cookie portal
-  consentUri: 'https://uhf.microsoft.com/en-us/shell/api/mscc' // (optional) the locale specified is used to generate a banner with the correct language. 
+  consentUri: 'https://uhf.microsoft.com/en-us/shell/api/mscc' // (optional) the locale specified is used to generate a banner with the correct language
 });
 ```
 
@@ -45,4 +45,4 @@ Inserts the HTML for the consent banner
 ```
 
 ### Notes:
-* Make sure you have you ['trust proxy' setting](http://expressjs.com/en/api.html#trust.proxy.options.table) configured correctly
+* Make sure you have your ['trust proxy' setting](http://expressjs.com/en/api.html#trust.proxy.options.table) configured correctly
