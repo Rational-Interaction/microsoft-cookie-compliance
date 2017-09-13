@@ -23,6 +23,8 @@ Includes 3 helpers for displaying the cookie compliance banner and conditionally
 ```javascript
 MSCC.registerHandlebars(Handlebars);
 ```
+#### Notes:
+* Make sure you have your ['trust proxy' setting](http://expressjs.com/en/api.html#trust.proxy.options.table) configured correctly
 
 #### msccConsentRequired
 If consent has been obtained, or is not required, this block helper simply passes the content through to the HTML. If consent hasn't been obtained yet, it wraps the content in a javascript function that adds it to the page once consent is obtained.
@@ -44,5 +46,12 @@ Inserts the HTML for the consent banner
 {{msccBannerHTML mscc}}
 ```
 
-### Notes:
-* Make sure you have your ['trust proxy' setting](http://expressjs.com/en/api.html#trust.proxy.options.table) configured correctly
+## Development
+There are two ways to run the unit tests, normally:
+```bash
+npm test
+```
+and in debug mode (using electron for debugging):
+```bash
+npm run debug-test
+```

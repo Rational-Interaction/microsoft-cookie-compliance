@@ -8,7 +8,7 @@
 	"license": "MIT",
 	"scripts": {
 		"test": "mocha",
-    "debug-mocha": "iron-node node_modules/mocha/bin/_mocha"
+		"debug-test": "iron-node node_modules/mocha/bin/_mocha"
 	},
 	"dependencies": {
 		"cache-manager": "^2.4.0",
@@ -24,6 +24,7 @@
 		"chai": "^4.1.2",
 		"chai-as-promised": "^7.1.1",
 		"handlebars": "^4.0.10",
+		"iron-node": "^3.0.20",
 		"mocha": "^3.5.3",
 		"nock": "^9.0.14",
 		"sinon": "^3.2.1",
