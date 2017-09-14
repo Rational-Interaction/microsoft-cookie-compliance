@@ -39,9 +39,57 @@ describe("basic functionality", () => {
 			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.noConsent'));
 		});
 	});
-	it('if it cannot contact an API server it should fail conservatively');
-	// this means defaulting the country to "euregion" if it cannot contact wipmania
-	// and if it cannot contact the microsoft server then not setting cookies (assume no consent, can't show the banner)
+	it('if it cannot contact an the MSCC API it should fail conservatively', () => {
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/127.0.0.2?example.com')
+			.reply(200, 'euregion');
+		this.microsoftRequest = nock('http://test.microsoft.com/')
+			.get('/?sitename=testing&domain=example.com&country=euregion')
+			.reply(500);
+		return this.mscc.isConsentRequired('127.0.0.2').then((cookieConsent) => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			expect(this.microsoftRequest.isDone()).to.be.true;
+			expect(cookieConsent).to.deep.equal({
+				"IsConsentRequired": true,
+				"Error": true
+			});
+		});
+	});
+	it('if it cannot determine the country from the IP, it assumes euregion', () => {
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/127.0.0.2?example.com')
+			.reply(200, 'XX');
+		this.microsoftRequest = nock('http://test.microsoft.com/')
+			.get('/?sitename=testing&domain=example.com&country=euregion')
+			.reply(200, require('../mock/msccResponse.consentRequired'));
+
+		return this.mscc.isConsentRequired('127.0.0.2').then((cookieConsent) => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			expect(this.microsoftRequest.isDone()).to.be.true;
+			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.consentRequired'));
+		});
+	});
+	it('if it cannot contact an the geolocation API it should fail conservatively', () => {
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/127.0.0.2?example.com')
+			.reply(500);
+		return this.mscc.isConsentRequired('127.0.0.2').then((cookieConsent) => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.consentRequired'));
+		})
+	});
+	it('supports a debug mode', () => {
+		this.microsoftRequest = nock('http://test.microsoft.com/')
+			.get('/?sitename=testing&domain=example.com&country=euregion&mscc_eudomain=true')
+			.reply(200, require('../mock/msccResponse.consentRequired'));
+
+		return this.mscc.isConsentRequired('127.0.0.1', true).then((cookieConsent) => {
+			expect(this.ipRequest.isDone()).not.to.be.true;
+			expect(this.microsoftRequest.isDone()).to.be.true;
+			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.consentRequired'));
+		});
+	});
+
 });
 describe("caching", () => {
 	it("caches requests for the microsoft API", () => {
@@ -97,12 +145,28 @@ describe("express middleware", () => {
 			done();
 		});
 	});
+	it("should enable debug mode if the mscc_eudomain=true query string parameter is present", (done) => {
+		this.req = mockReq({
+			ip: '127.0.0.1',
+			query: {
+				mscc_eudomain: 'true'
+			}
+		});
+		this.mscc.express(this.req, this.res, () => {
+			expect(this.ipRequest.isDone()).to.be.false;
+			expect(this.res.locals.mscc).to.deep.equal(require('../mock/msccResponse.consentRequired'));
+			done();
+		});
+	});
 });
 describe("koa middleware", () => {
 	beforeEach(() => {
 		this.ctx = {
 			ip: '127.0.0.1',
 			state: {},
+			request: {
+				query: {},
+			},
 			cookies: {
 				get: function() {
 					return null;
@@ -126,6 +190,9 @@ describe("koa middleware", () => {
 		this.ctx = {
 			ip: '127.0.0.1',
 			state: {},
+			request: {
+				query: {},
+			},
 			cookies: {
 				get: function() {
 					return true;
@@ -136,6 +203,22 @@ describe("koa middleware", () => {
 			expect(this.ipRequest.isDone()).to.be.false;
 			expect(this.ctx.state).to.exist;
 			expect(this.ctx.state.mscc).not.to.exist;
+			done();
+		});
+	});
+	it("should enable debug mode if the mscc_eudomain=true query string parameter is present", (done) => {
+		this.ctx = {
+			ip: '127.0.0.1',
+			state: {},
+			request: {
+				query: {
+					mscc_eudomain: 'true'
+				}
+			}
+		};
+		this.mscc.koa(this.ctx, () => {
+			expect(this.ipRequest.isDone()).to.be.false;
+			expect(this.ctx.state.mscc).to.deep.equal(require('../mock/msccResponse.consentRequired'));
 			done();
 		});
 	});
@@ -177,6 +260,12 @@ describe("handlebars helper", () => {
 			expect(rendered).not.to.have.string('</script>');
 			expect(rendered).to.have.string('.innerHTML = "<div>\'\\"<"+"/script></div>"');
 		});
+		it("is blank if it cannot contact the MSCC API servers", () => {
+			let rendered = this.template({
+				mscc: require('../mock/msccResponse.error')
+			});
+			expect(rendered).to.equal('');
+		});
 	});
 	describe("msccIncludes", () => {
 		beforeEach(() => {
@@ -201,6 +290,12 @@ describe("handlebars helper", () => {
 			let rendered = this.template();
 			expect(rendered).to.equal('');
 		});
+		it("is blank if it cannot contact the MSCC API servers", () => {
+			let rendered = this.template({
+				mscc: require('../mock/msccResponse.error')
+			});
+			expect(rendered).to.equal('');
+		});
 	});
 	describe("msccBannerHTML", () => {
 		beforeEach(() => {
@@ -220,6 +315,12 @@ describe("handlebars helper", () => {
 		});
 		it("is blank if consent is already provided", () => {
 			let rendered = this.template();
+			expect(rendered).to.equal('');
+		});
+		it("is blank if it cannot contact the MSCC API servers", () => {
+			let rendered = this.template({
+				mscc: require('../mock/msccResponse.error')
+			});
 			expect(rendered).to.equal('');
 		});
 	});
