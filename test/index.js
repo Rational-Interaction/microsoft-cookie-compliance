@@ -249,7 +249,7 @@ describe("handlebars helper", () => {
 		});
 		it("properly escapes HTML/Javascript content for the delayed loader", () => {
 			this.template = Handlebars.compile(
-				'{{#msccConsentRequired mscc}}<div>\'"</script></div>{{/msccConsentRequired}}', {
+				'{{#msccConsentRequired mscc}}<div>\'"<script></script><script></script></div>{{/msccConsentRequired}}', {
 					strict: true
 				}
 			);
@@ -258,7 +258,7 @@ describe("handlebars helper", () => {
 			});
 			rendered = rendered.slice(0, -1*'</script></div>'.length);
 			expect(rendered).not.to.have.string('</script>');
-			expect(rendered).to.have.string('.innerHTML = "<div>\'\\"<"+"/script></div>"');
+			expect(rendered).to.have.string('.innerHTML = "<div>\'\\"<script><"+"/script><script><"+"/script></div>"');
 		});
 		it("is blank if it cannot contact the MSCC API servers", () => {
 			let rendered = this.template({
