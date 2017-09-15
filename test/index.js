@@ -275,10 +275,9 @@ describe("handlebars helper", () => {
 			let rendered = this.template({
 				mscc: require('../mock/msccResponse.consentRequired')
 			});
-			expect(rendered).to.equal(
-				'<link rel="stylesheet" type="text/css" href="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.css">'+
-				'<script src="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.js" type="text/javascript"></script>'
-			);
+			expect(rendered).to.contain('<link rel="stylesheet" type="text/css" href="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.css">');
+			expect(rendered).to.contain('<script src="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.js" type="text/javascript"></script>');
+			expect(rendered).to.contain('msccHandlebars');
 		});
 		it("is blank if consent isn't required", () => {
 			let rendered = this.template({
