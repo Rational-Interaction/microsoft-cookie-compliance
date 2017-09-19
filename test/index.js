@@ -1,4 +1,5 @@
 const nock = require('nock');
+const fs = require('fs');
 const chai = require('chai');
 const should = chai.should();
 const expect = chai.expect;
@@ -256,9 +257,9 @@ describe("handlebars helper", () => {
 			let rendered = this.template({
 				mscc: require('../mock/msccResponse.consentRequired')
 			});
-			rendered = rendered.slice(0, -1*'</script></div>'.length);
+			rendered = rendered.slice(0, -1*'</script>'.length);
 			expect(rendered).not.to.have.string('</script>');
-			expect(rendered).to.have.string('.innerHTML = "<div>\'\\"<script><"+"/script><script><"+"/script></div>"');
+			expect(rendered).to.have.string('"<div>\'\\"<script><"+"/script><script><"+"/script></div>"');
 		});
 		it("is blank if it cannot contact the MSCC API servers", () => {
 			let rendered = this.template({
@@ -277,23 +278,33 @@ describe("handlebars helper", () => {
 			});
 			expect(rendered).to.contain('<link rel="stylesheet" type="text/css" href="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.css">');
 			expect(rendered).to.contain('<script src="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.js" type="text/javascript"></script>');
-			expect(rendered).to.contain('msccHandlebars');
+			expect(rendered).to.contain(fs.readFileSync('lib/handlebars-clientSide.js').toString());
 		});
-		it("is blank if consent isn't required", () => {
+		it("not to contain JS/CSS includes if consent isn't required", () => {
 			let rendered = this.template({
 				mscc: require('../mock/msccResponse.noConsent')
 			});
-			expect(rendered).to.equal('');
+
+			expect(rendered).not.to.contain('<link rel="stylesheet" type="text/css" href="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.css">');
+			expect(rendered).not.to.contain('<script src="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.js" type="text/javascript"></script>');
+			expect(rendered).to.contain(fs.readFileSync('lib/handlebars-clientSide.js').toString());
+
 		});
-		it("is blank if consent is already provided", () => {
+		it("not to contain JS/CSS includes if consent is already provided", () => {
 			let rendered = this.template();
-			expect(rendered).to.equal('');
+
+			expect(rendered).not.to.contain('<link rel="stylesheet" type="text/css" href="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.css">');
+			expect(rendered).not.to.contain('<script src="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.js" type="text/javascript"></script>');
+			expect(rendered).to.contain(fs.readFileSync('lib/handlebars-clientSide.js').toString());
 		});
-		it("is blank if it cannot contact the MSCC API servers", () => {
+		it("not to contain JS/CSS includes if it cannot contact the MSCC API servers", () => {
 			let rendered = this.template({
 				mscc: require('../mock/msccResponse.error')
 			});
-			expect(rendered).to.equal('');
+
+			expect(rendered).not.to.contain('<link rel="stylesheet" type="text/css" href="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.css">');
+			expect(rendered).not.to.contain('<script src="https://uhf.microsoft.com/mscc/statics/mscc-0.2.2.min.js" type="text/javascript"></script>');
+			expect(rendered).to.contain(fs.readFileSync('lib/handlebars-clientSide.js').toString());
 		});
 	});
 	describe("msccBannerHTML", () => {
