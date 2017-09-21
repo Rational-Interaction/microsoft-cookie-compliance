@@ -3,11 +3,38 @@ const fs = require('fs');
 const chai = require('chai');
 const should = chai.should();
 const expect = chai.expect;
+const _ = require('lodash');
 chai.use(require('chai-as-promised'));
 const {mockReq, mockRes} = require('sinon-express-mock')
 
 const MSCC = require('../index.js');
 const Handlebars = require('handlebars');
+
+const makeReq = (req) => {
+	return mockReq(_.merge({}, {
+		ip: '127.0.0.1',
+		headers: {},
+		connection: { remoteAddress: !req || req.ip }
+	}, req));
+}
+const makeCtx = (ctx) => {
+	return _.merge({}, {
+		ip: '127.0.0.1',
+		state: {},
+		req: {
+			headers: {},
+			connection: { remoteAddress: !ctx || ctx.ip }
+		},
+		request: {
+			query: {}
+		},
+		cookies: {
+			get: function() {
+				return null;
+			}
+		}
+	}, ctx);
+}
 
 beforeEach(() => {
 	nock.cleanAll();
@@ -115,12 +142,40 @@ describe("caching", () => {
 });
 describe("express middleware", () => {
 	beforeEach(() => {
-		this.req = mockReq({
-			ip: '127.0.0.1'
-		});
+		this.req = makeReq({ip: '127.0.0.1'});
 		this.res = mockRes();
 	});
-	it("pulls the correct IP from the request object", (done) => {
+	it("pulls the IP from the request object", (done) => {
+		this.mscc.express(this.req, this.res, () => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			done();
+		});
+	});
+	it("respects the X-Forwarded-For header", (done) => {
+		this.req = makeReq({
+			ip: '203.0.113.19',
+			headers: {
+				'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178'
+			}
+		});
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/203.0.113.195?example.com')
+			.reply(200, 'euregion');
+		this.mscc.express(this.req, this.res, () => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			done();
+		});
+	});
+	it("ignores the end of the X-Forwarded-For chain if it contains unroutable IPs", (done) => {
+		this.req = makeReq({
+			ip: '203.0.113.19',
+			headers: {
+				'x-forwarded-for': '127.0.0.1, 10.0.0.1, 192.168.0.1, 150.172.238.178'
+			}
+		});
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/150.172.238.178?example.com')
+			.reply(200, 'euregion');
 		this.mscc.express(this.req, this.res, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
@@ -133,7 +188,7 @@ describe("express middleware", () => {
 		});
 	});
 	it("skips the cookie compliance check if the user already has given consent (tracked via cookie)", (done) => {
-		this.req = mockReq({
+		this.req = makeReq({
 			ip: '127.0.0.1',
 			cookies: {
 				'MSCC': 'true'
@@ -147,7 +202,7 @@ describe("express middleware", () => {
 		});
 	});
 	it("should enable debug mode if the mscc_eudomain=true query string parameter is present", (done) => {
-		this.req = mockReq({
+		this.req = makeReq({
 			ip: '127.0.0.1',
 			query: {
 				mscc_eudomain: 'true'
@@ -162,20 +217,48 @@ describe("express middleware", () => {
 });
 describe("koa middleware", () => {
 	beforeEach(() => {
-		this.ctx = {
-			ip: '127.0.0.1',
-			state: {},
-			request: {
-				query: {},
-			},
-			cookies: {
-				get: function() {
-					return null;
-				}
-			}
-		}
+		this.ctx = makeCtx({
+			ip: '127.0.0.1'
+		});
 	});
 	it("pulls the correct IP from the request object", (done) => {
+		this.ctx = makeCtx({
+			ip: '127.0.0.1'
+		});
+		this.mscc.koa(this.ctx, () => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			done();
+		});
+	});
+	it("respects the X-Forwarded-For header", (done) => {
+		this.ctx = makeCtx({
+			ip: '203.0.113.19',
+			req: {
+				headers: {
+					'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178'
+				}
+			}
+		});
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/203.0.113.195?example.com')
+			.reply(200, 'euregion');
+		this.mscc.koa(this.ctx, () => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			done();
+		});
+	});
+	it("ignores the end of the X-Forwarded-For chain if it contains unroutable IPs", (done) => {
+		this.ctx = makeCtx({
+			ip: '203.0.113.19',
+			req: {
+				headers: {
+					'x-forwarded-for': '127.0.0.1, 10.0.0.1, 192.168.0.1, 150.172.238.178'
+				}
+			}
+		});
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/150.172.238.178?example.com')
+			.reply(200, 'euregion');
 		this.mscc.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
@@ -188,18 +271,14 @@ describe("koa middleware", () => {
 		});
 	});
 	it("skips the cookie compliance check if the user already has given consent (tracked via cookie)", (done) => {
-		this.ctx = {
+		this.ctx = makeCtx({
 			ip: '127.0.0.1',
-			state: {},
-			request: {
-				query: {},
-			},
 			cookies: {
 				get: function() {
 					return true;
 				}
 			}
-		};
+		});
 		this.mscc.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.false;
 			expect(this.ctx.state).to.exist;
@@ -208,15 +287,14 @@ describe("koa middleware", () => {
 		});
 	});
 	it("should enable debug mode if the mscc_eudomain=true query string parameter is present", (done) => {
-		this.ctx = {
+		this.ctx = makeCtx({
 			ip: '127.0.0.1',
-			state: {},
 			request: {
 				query: {
 					mscc_eudomain: 'true'
 				}
 			}
-		};
+		});
 		this.mscc.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.false;
 			expect(this.ctx.state.mscc).to.deep.equal(require('../mock/msccResponse.consentRequired'));

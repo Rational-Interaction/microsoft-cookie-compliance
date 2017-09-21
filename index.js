@@ -9,6 +9,8 @@ const registerHandlebarsHelpers = require('./lib/handlebars');
 const request      = require('request-promise');
 const cacheManager = require('cache-manager');
 const memoryCache  = cacheManager.caching({store: 'memory', max: 100, ttl: 31*24*60*60/*seconds*/}); // 1month
+const proxyAddr    = require('proxy-addr');
+const _            = require('lodash');
 
 let MSCC = class {
 	constructor (options = {}) {
@@ -51,6 +53,11 @@ let MSCC = class {
 				"Error": true
 			}
 		});
+	}
+	getIPFromRequest(req) {
+		let ips = proxyAddr.all(req, () => true);
+		let isUnroutable = proxyAddr.compile(['loopback', 'linklocal', 'uniquelocal']);
+		return _.findLast(ips, (ip) => !isUnroutable(ip)) || req.ip || (req.connection && req.connection.remoteAddress);
 	}
 }
 MSCC.registerHandlebars = registerHandlebarsHelpers;

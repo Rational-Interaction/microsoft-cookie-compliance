@@ -451,6 +451,10 @@ formatio@1.2.0, formatio@^1.2.0:
   dependencies:
     samsam "1.x"
 
+forwarded@~0.1.1:
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/forwarded/-/forwarded-0.1.2.tgz#98c23dab1175657b8c0573e8ceccd91b0ff18c84"
+
 fs-extra@^0.23.1:
   version "0.23.1"
   resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-0.23.1.tgz#6611dba6adf2ab8dc9c69fab37cddf8818157e3d"
@@ -602,6 +606,10 @@ inherits@2.0.1:
 ini@~1.3.0:
   version "1.3.4"
   resolved "https://registry.yarnpkg.com/ini/-/ini-1.3.4.tgz#0537cb79daf59b59a1a517dff706c86ec039162e"
+
+ipaddr.js@1.5.2:
+  version "1.5.2"
+  resolved "https://registry.yarnpkg.com/ipaddr.js/-/ipaddr.js-1.5.2.tgz#d4b505bde9946987ccf0fc58d9010ff9607e3fa0"
 
 iron-node@^3.0.20:
   version "3.0.20"
@@ -1082,6 +1090,13 @@ progress-stream@^1.1.0:
 propagate@0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/propagate/-/propagate-0.4.0.tgz#f3fcca0a6fe06736a7ba572966069617c130b481"
+
+proxy-addr@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/proxy-addr/-/proxy-addr-2.0.1.tgz#a6f82fdbcaf6fea35d635b0be0997b79a8feef66"
+  dependencies:
+    forwarded "~0.1.1"
+    ipaddr.js "1.5.2"
 
 pseudomap@^1.0.1:
   version "1.0.2"

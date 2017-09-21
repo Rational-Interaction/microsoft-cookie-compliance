@@ -23,8 +23,6 @@ Includes 3 helpers for displaying the cookie compliance banner and conditionally
 ```javascript
 MSCC.registerHandlebars(Handlebars);
 ```
-#### Notes:
-* Make sure you have your ['trust proxy' setting](http://expressjs.com/en/api.html#trust.proxy.options.table) configured correctly
 
 #### msccConsentRequired
 If consent has been obtained, or is not required, this block helper simply passes the content through to the HTML. If consent hasn't been obtained yet, it wraps the content in a javascript function that adds it to the page once consent is obtained.
