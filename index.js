@@ -16,6 +16,7 @@ let MSCC = class {
 	constructor (options = {}) {
 		this.domain = options.domain;
 		this.consentUri = options.consentUri || DEFAULT_CONSENT_URI;
+		this.log = options.log || _.noop;
 		this.siteName = options.siteName || 'unknown';
 		this.koa = koaMiddlewareFactory(this);
 		this.express = expressMiddlewareFactory(this);
@@ -23,12 +24,18 @@ let MSCC = class {
 
 	isConsentRequired(ip, isDebugMode) {
 		if (isDebugMode) {
+			this.log('Debug mode is on, defaulting country to '+CONSERVATIVE_COUNTRY)
+
 			return this._isConsentRequiredForCountry(CONSERVATIVE_COUNTRY, true)
 		} else {
 			return request({
 				uri : 'http://api.wipmania.com/' + ip + '?' + this.domain
-			}).then((country) => this._isConsentRequiredForCountry(country)).catch(() => {
+			}).then((country) => {
+				this.log('IP '+ip+' resolved to country '+country);
+				return this._isConsentRequiredForCountry(country);
+			}).catch(() => {
 				// if we can't GEOIP the country, assume the worst
+				this.log('Error contacting GEOIP api, defaulting country to '+CONSERVATIVE_COUNTRY)
 				return this._isConsentRequiredForCountry(CONSERVATIVE_COUNTRY);
 			});
 		}
@@ -39,6 +46,8 @@ let MSCC = class {
 		uri = uri + '&country=' + (!country || country == 'XX' ? CONSERVATIVE_COUNTRY : country);
 
 		if (isDebugMode) {
+			this.log('Debug mode enabled, adding mscc_eudomain parameter')
+
 			uri += '&mscc_eudomain=true';
 		}
 
@@ -47,7 +56,11 @@ let MSCC = class {
 				uri: uri,
 				json: true
 			}).promise();
-		}).catch(() => {
+		}).then((result) => {
+			this.log('Response received from MSCC: '+JSON.stringify(result));
+			return result;
+		}, () => {
+			this.log('Error contacting MSCC API')
 			return {
 				"IsConsentRequired": true,
 				"Error": true

@@ -1,9 +1,11 @@
 const nock = require('nock');
 const fs = require('fs');
+const _ = require('lodash');
 const chai = require('chai');
 const should = chai.should();
 const expect = chai.expect;
-const _ = require('lodash');
+const sinon = require('sinon');
+chai.use(require('sinon-chai'))
 chai.use(require('chai-as-promised'));
 const {mockReq, mockRes} = require('sinon-express-mock')
 
@@ -410,6 +412,21 @@ describe("handlebars helper", () => {
 				mscc: require('../mock/msccResponse.error')
 			});
 			expect(rendered).to.equal('');
+		});
+	});
+	describe("logging", () => {
+		it('should call the provided log method when you make requests', (done) => {
+			this.mscc = new MSCC({
+				domain: 'example.com',
+				siteName: 'testing',
+				consentUri: 'http://test.microsoft.com/',
+				log: this.logger = sinon.spy()
+			});
+			this.logger.should.not.have.been.called;
+			this.mscc.isConsentRequired('127.0.0.1').then(() => {
+				this.logger.should.have.been.called;
+				done();
+			});
 		});
 	});
 });
