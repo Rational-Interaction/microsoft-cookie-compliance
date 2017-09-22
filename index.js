@@ -69,6 +69,7 @@ let MSCC = class {
 	}
 	getIPFromRequest(req) {
 		let ips = proxyAddr.all(req, () => true);
+		this.log('X-Forwarded-For IP chain: '+ips)
 		let isUnroutable = proxyAddr.compile(['loopback', 'linklocal', 'uniquelocal']);
 		return _.findLast(ips, (ip) => !isUnroutable(ip)) || req.ip || (req.connection && req.connection.remoteAddress);
 	}
