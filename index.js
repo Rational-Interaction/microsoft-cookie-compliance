@@ -71,7 +71,14 @@ let MSCC = class {
 		let ips = proxyAddr.all(req, () => true);
 		this.log('X-Forwarded-For IP chain: '+ips)
 		let isUnroutable = proxyAddr.compile(['loopback', 'linklocal', 'uniquelocal']);
-		return _.findLast(ips, (ip) => !isUnroutable(ip)) || req.ip || (req.connection && req.connection.remoteAddress);
+		let ip = _.findLast(ips, (ip) => !isUnroutable(ip)) || req.ip || (req.connection && req.connection.remoteAddress);
+
+		if (ip.split(':').length === 2) { // IPv6 addresses should have at least 2 colons, so this should be OK
+			debugger;
+			return ip.split(':')[0];
+		} else {
+			return ip;
+		}
 	}
 }
 MSCC.registerHandlebars = registerHandlebarsHelpers;

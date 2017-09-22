@@ -254,12 +254,46 @@ describe("koa middleware", () => {
 			ip: '203.0.113.19',
 			req: {
 				headers: {
-					'x-forwarded-for': '127.0.0.1, 10.0.0.1, 192.168.0.1, 150.172.238.178'
+					'x-forwarded-for': '127.0.0.1, 10.0.0.1, ::ffff:172.18.0.1, 192.168.0.1, 150.172.238.178'
 				}
 			}
 		});
 		this.ipRequest = nock('http://api.wipmania.com/')
 			.get('/150.172.238.178?example.com')
+			.reply(200, 'euregion');
+		this.mscc.koa(this.ctx, () => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			done();
+		});
+	});
+	it("ignores removes the port from ips in the  X-Forwarded-For", (done) => {
+		this.ctx = makeCtx({
+			ip: '203.0.113.19',
+			req: {
+				headers: {
+					'x-forwarded-for': '150.172.238.178:1234'
+				}
+			}
+		});
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/150.172.238.178?example.com')
+			.reply(200, 'euregion');
+		this.mscc.koa(this.ctx, () => {
+			expect(this.ipRequest.isDone()).to.be.true;
+			done();
+		});
+	});
+	it("ignores supports IPv6 addresses X-Forwarded-For", (done) => {
+		this.ctx = makeCtx({
+			ip: '203.0.113.19',
+			req: {
+				headers: {
+					'x-forwarded-for': '::ffff:172.18.0.1, 2001:470:1:18::125'
+				}
+			}
+		});
+		this.ipRequest = nock('http://api.wipmania.com/')
+			.get('/2001:470:1:18::125?example.com')
 			.reply(200, 'euregion');
 		this.mscc.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
