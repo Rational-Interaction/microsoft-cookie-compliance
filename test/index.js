@@ -7,9 +7,12 @@ const expect = chai.expect;
 const sinon = require('sinon');
 chai.use(require('sinon-chai'))
 chai.use(require('chai-as-promised'));
-const {mockReq, mockRes} = require('sinon-express-mock')
+const {mockReq, mockRes} = require('sinon-express-mock');
 
 const MSCC = require('../index.js');
+const koa = require('../koa.js');
+const express = require('../express');
+const msccRegisterHandlebars = require('../handlebars');
 const Handlebars = require('handlebars');
 
 const makeReq = (req) => {
@@ -45,6 +48,8 @@ beforeEach(() => {
 		siteName: 'testing',
 		consentUri: 'http://test.microsoft.com/'
 	});
+	this.koa = koa(this.mscc);
+	this.express = express(this.mscc);
 	this.ipRequest = nock('http://api.wipmania.com/')
 		.get('/127.0.0.1?example.com')
 		.reply(200, 'US');
@@ -148,7 +153,7 @@ describe("express middleware", () => {
 		this.res = mockRes();
 	});
 	it("pulls the IP from the request object", (done) => {
-		this.mscc.express(this.req, this.res, () => {
+		this.express(this.req, this.res, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
 		});
@@ -163,7 +168,7 @@ describe("express middleware", () => {
 		this.ipRequest = nock('http://api.wipmania.com/')
 			.get('/203.0.113.195?example.com')
 			.reply(200, 'euregion');
-		this.mscc.express(this.req, this.res, () => {
+		this.express(this.req, this.res, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
 		});
@@ -178,13 +183,13 @@ describe("express middleware", () => {
 		this.ipRequest = nock('http://api.wipmania.com/')
 			.get('/150.172.238.178?example.com')
 			.reply(200, 'euregion');
-		this.mscc.express(this.req, this.res, () => {
+		this.express(this.req, this.res, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
 		});
 	});
 	it("automatically attaches cookie compliance information to the locals", (done) => {
-		this.mscc.express(this.req, this.res, () => {
+		this.express(this.req, this.res, () => {
 			expect(this.res.locals.mscc).to.deep.equal(require('../mock/msccResponse.noConsent'));
 			done();
 		});
@@ -196,7 +201,7 @@ describe("express middleware", () => {
 				'MSCC': 'true'
 			}
 		});
-		this.mscc.express(this.req, this.res, () => {
+		this.express(this.req, this.res, () => {
 			expect(this.ipRequest.isDone()).to.be.false;
 			expect(this.res.locals).to.exist;
 			expect(this.res.locals.mscc).not.to.exist;
@@ -210,7 +215,7 @@ describe("express middleware", () => {
 				mscc_eudomain: 'true'
 			}
 		});
-		this.mscc.express(this.req, this.res, () => {
+		this.express(this.req, this.res, () => {
 			expect(this.ipRequest.isDone()).to.be.false;
 			expect(this.res.locals.mscc).to.deep.equal(require('../mock/msccResponse.consentRequired'));
 			done();
@@ -227,7 +232,7 @@ describe("koa middleware", () => {
 		this.ctx = makeCtx({
 			ip: '127.0.0.1'
 		});
-		this.mscc.koa(this.ctx, () => {
+		this.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
 		});
@@ -244,7 +249,7 @@ describe("koa middleware", () => {
 		this.ipRequest = nock('http://api.wipmania.com/')
 			.get('/203.0.113.195?example.com')
 			.reply(200, 'euregion');
-		this.mscc.koa(this.ctx, () => {
+		this.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
 		});
@@ -261,7 +266,7 @@ describe("koa middleware", () => {
 		this.ipRequest = nock('http://api.wipmania.com/')
 			.get('/150.172.238.178?example.com')
 			.reply(200, 'euregion');
-		this.mscc.koa(this.ctx, () => {
+		this.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
 		});
@@ -278,7 +283,7 @@ describe("koa middleware", () => {
 		this.ipRequest = nock('http://api.wipmania.com/')
 			.get('/150.172.238.178?example.com')
 			.reply(200, 'euregion');
-		this.mscc.koa(this.ctx, () => {
+		this.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
 		});
@@ -295,13 +300,13 @@ describe("koa middleware", () => {
 		this.ipRequest = nock('http://api.wipmania.com/')
 			.get('/2001:470:1:18::125?example.com')
 			.reply(200, 'euregion');
-		this.mscc.koa(this.ctx, () => {
+		this.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.true;
 			done();
 		});
 	});
 	it("automatically attaches cookie compliance information to the locals", (done) => {
-		this.mscc.koa(this.ctx, () => {
+		this.koa(this.ctx, () => {
 			expect(this.ctx.state.mscc).to.deep.equal(require('../mock/msccResponse.noConsent'));
 			done();
 		});
@@ -315,7 +320,7 @@ describe("koa middleware", () => {
 				}
 			}
 		});
-		this.mscc.koa(this.ctx, () => {
+		this.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.false;
 			expect(this.ctx.state).to.exist;
 			expect(this.ctx.state.mscc).not.to.exist;
@@ -331,7 +336,7 @@ describe("koa middleware", () => {
 				}
 			}
 		});
-		this.mscc.koa(this.ctx, () => {
+		this.koa(this.ctx, () => {
 			expect(this.ipRequest.isDone()).to.be.false;
 			expect(this.ctx.state.mscc).to.deep.equal(require('../mock/msccResponse.consentRequired'));
 			done();
@@ -340,7 +345,7 @@ describe("koa middleware", () => {
 });
 describe("handlebars helper", () => {
 	it('can automatically register the helpers', () => {
-		MSCC.registerHandlebars(Handlebars);
+		msccRegisterHandlebars(Handlebars);
 	})
 	describe('msccConsentRequired', () => {
 		beforeEach(() => {

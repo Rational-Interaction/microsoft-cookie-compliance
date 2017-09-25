@@ -15,13 +15,20 @@ var mscc = new MSCC({
 ### Express Middleware
 For each request the express middleware will ensure the cookie compliance information is attached to `res.locals.mscc` to support the handlebars helpers
 ```javascript
-app.use(mscc.express);
+app.use(require('microsoft-cookie-compliance/express')(mscc));
+```
+
+### Koa 2 Middleware
+For each request the koa middleware will ensure the cookie compliance information is attached to `ctx.state.mscc` to support the handlebars helpers
+```javascript
+app.use(require('microsoft-cookie-compliance/koa')(mscc));
 ```
 
 ### Handlebars Helpers
 Includes 3 helpers for displaying the cookie compliance banner and conditionally including code based on compliance status. To use, first register the handlebars helpers:
 ```javascript
-MSCC.registerHandlebars(Handlebars);
+var msccRegisterHandlebars = require('microsoft-cookie-compliance/handlebars');
+msccRegisterHandlebars(Handlebars);
 ```
 
 #### msccConsentRequired

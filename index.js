@@ -1,11 +1,6 @@
 const DEFAULT_CONSENT_URI = 'https://uhf.microsoft.com/en-us/shell/api/mscc';
 const CONSERVATIVE_COUNTRY = 'euregion';
 
-const koaMiddlewareFactory = require('./lib/koa');
-const expressMiddlewareFactory = require('./lib/express');
-const registerHandlebarsHelpers = require('./lib/handlebars');
-
-
 const request      = require('request-promise');
 const cacheManager = require('cache-manager');
 const memoryCache  = cacheManager.caching({store: 'memory', max: 100, ttl: 31*24*60*60/*seconds*/}); // 1month
@@ -18,8 +13,6 @@ let MSCC = class {
 		this.consentUri = options.consentUri || DEFAULT_CONSENT_URI;
 		this.log = options.log || _.noop;
 		this.siteName = options.siteName || 'unknown';
-		this.koa = koaMiddlewareFactory(this);
-		this.express = expressMiddlewareFactory(this);
 	}
 
 	isConsentRequired(ip, isDebugMode) {
@@ -74,12 +67,10 @@ let MSCC = class {
 		let ip = _.findLast(ips, (ip) => !isUnroutable(ip)) || req.ip || (req.connection && req.connection.remoteAddress);
 
 		if (ip.split(':').length === 2) { // IPv6 addresses should have at least 2 colons, so this should be OK
-			debugger;
 			return ip.split(':')[0];
 		} else {
 			return ip;
 		}
 	}
 }
-MSCC.registerHandlebars = registerHandlebarsHelpers;
 module.exports = MSCC;

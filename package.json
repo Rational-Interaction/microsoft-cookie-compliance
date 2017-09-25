@@ -1,6 +1,6 @@
 {
 	"name": "microsoft-cookie-compliance",
-	"version": "1.2.3",
+	"version": "1.3.0",
 	"description": "Helper middleware and methods for node sites looking to be compliant with microsoft's EU cookie policies",
 	"main": "index.js",
 	"repository": "git@github.com:Rational-Interaction/microsoft-cookie-compliance.git",
