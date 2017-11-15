@@ -4,12 +4,25 @@ const _ = require('lodash');
 const chai = require('chai');
 const should = chai.should();
 const expect = chai.expect;
+const mock = require('mock-require');
 const sinon = require('sinon');
 chai.use(require('sinon-chai'))
 chai.use(require('chai-as-promised'));
 const {mockReq, mockRes} = require('sinon-express-mock');
 
-const MSCC = require('../index.js');
+var MSCC, GeoIP;
+before(() => {
+	mock('../lib/geoip', function() {
+		return GeoIP = {
+			get: sinon.stub().onFirstCall().resolves('US'),
+			startAutoUpdate: sinon.stub()
+		};
+	});
+	MSCC = require('../index.js');
+});
+after(() => {
+	mock.stopAll();
+})
 const koa = require('../koa.js');
 const express = require('../express');
 const msccRegisterHandlebars = require('../handlebars');
@@ -41,6 +54,7 @@ const makeCtx = (ctx) => {
 	}, ctx);
 }
 
+
 beforeEach(() => {
 	nock.cleanAll();
 	this.mscc = new MSCC({
@@ -50,9 +64,6 @@ beforeEach(() => {
 	});
 	this.koa = koa(this.mscc);
 	this.express = express(this.mscc);
-	this.ipRequest = nock('http://api.wipmania.com/')
-		.get('/127.0.0.1?example.com')
-		.reply(200, 'US');
 
 	this.microsoftRequest = nock('http://test.microsoft.com/')
 		.get('/?sitename=testing&domain=example.com&country=US')
@@ -65,24 +76,24 @@ describe("basic functionality", () => {
 			domain: 'example.com'
 		});
 		should.exist(mscc);
+		GeoIP.startAutoUpdate.should.have.been.calledOnce;
 		mscc.should.be.instanceof(MSCC);
 	});
 	it("finds the current user's country from their IP address, then queries the compliance API", () => {
 		return this.mscc.isConsentRequired('127.0.0.1').then((cookieConsent) => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('127.0.0.1');
 			expect(this.microsoftRequest.isDone()).to.be.true;
 			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.noConsent'));
 		});
 	});
 	it('if it cannot contact an the MSCC API it should fail conservatively', () => {
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/127.0.0.2?example.com')
-			.reply(200, 'euregion');
+		GeoIP.get.reset();
+		GeoIP.get.onFirstCall().resolves('GB');
 		this.microsoftRequest = nock('http://test.microsoft.com/')
-			.get('/?sitename=testing&domain=example.com&country=euregion')
+			.get('/?sitename=testing&domain=example.com&country=GB')
 			.reply(500);
 		return this.mscc.isConsentRequired('127.0.0.2').then((cookieConsent) => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('127.0.0.2');
 			expect(this.microsoftRequest.isDone()).to.be.true;
 			expect(cookieConsent).to.deep.equal({
 				"IsConsentRequired": true,
@@ -91,27 +102,17 @@ describe("basic functionality", () => {
 		});
 	});
 	it('if it cannot determine the country from the IP, it assumes euregion', () => {
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/127.0.0.2?example.com')
-			.reply(200, 'XX');
+		GeoIP.get.reset();
+		GeoIP.get.onFirstCall().resolves(null);
 		this.microsoftRequest = nock('http://test.microsoft.com/')
 			.get('/?sitename=testing&domain=example.com&country=euregion')
 			.reply(200, require('../mock/msccResponse.consentRequired'));
 
 		return this.mscc.isConsentRequired('127.0.0.2').then((cookieConsent) => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('127.0.0.2');
 			expect(this.microsoftRequest.isDone()).to.be.true;
 			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.consentRequired'));
 		});
-	});
-	it('if it cannot contact an the geolocation API it should fail conservatively', () => {
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/127.0.0.2?example.com')
-			.reply(500);
-		return this.mscc.isConsentRequired('127.0.0.2').then((cookieConsent) => {
-			expect(this.ipRequest.isDone()).to.be.true;
-			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.consentRequired'));
-		})
 	});
 	it('supports a debug mode', () => {
 		this.microsoftRequest = nock('http://test.microsoft.com/')
@@ -119,7 +120,7 @@ describe("basic functionality", () => {
 			.reply(200, require('../mock/msccResponse.consentRequired'));
 
 		return this.mscc.isConsentRequired('127.0.0.1', true).then((cookieConsent) => {
-			expect(this.ipRequest.isDone()).not.to.be.true;
+			GeoIP.get.should.not.have.been.called;
 			expect(this.microsoftRequest.isDone()).to.be.true;
 			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.consentRequired'));
 		});
@@ -128,20 +129,18 @@ describe("basic functionality", () => {
 });
 describe("caching", () => {
 	it("caches requests for the microsoft API", () => {
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/127.0.0.2?example.com')
-			.times(2)
-			.reply(200, 'UK');
+		GeoIP.get.reset();
+		GeoIP.get.resolves('UK');
 		this.microsoftRequest = nock('http://test.microsoft.com/')
 			.get('/?sitename=testing&domain=example.com&country=UK')
 			.reply(200, require('../mock/msccResponse.noConsent'));
 		return this.mscc.isConsentRequired('127.0.0.2').then((cookieConsent) => {
-			expect(this.ipRequest.isDone()).to.be.false;
+			GeoIP.get.should.have.been.called;
 			expect(this.microsoftRequest.isDone()).to.be.true;
 			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.noConsent'));
 			return this.mscc.isConsentRequired('127.0.0.2');
 		}).then((cookieConsent) => {
-				expect(this.ipRequest.isDone()).to.be.true;
+				GeoIP.get.should.have.been.calledTwice;
 				expect(this.microsoftRequest.isDone()).to.be.true;
 				expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.noConsent'));
 		});
@@ -154,7 +153,7 @@ describe("express middleware", () => {
 	});
 	it("pulls the IP from the request object", (done) => {
 		this.express(this.req, this.res, () => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('127.0.0.1');
 			done();
 		});
 	});
@@ -165,11 +164,8 @@ describe("express middleware", () => {
 				'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178'
 			}
 		});
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/203.0.113.195?example.com')
-			.reply(200, 'euregion');
 		this.express(this.req, this.res, () => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('203.0.113.195');
 			done();
 		});
 	});
@@ -180,11 +176,8 @@ describe("express middleware", () => {
 				'x-forwarded-for': '127.0.0.1, 10.0.0.1, 192.168.0.1, 150.172.238.178'
 			}
 		});
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/150.172.238.178?example.com')
-			.reply(200, 'euregion');
 		this.express(this.req, this.res, () => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('150.172.238.178');
 			done();
 		});
 	});
@@ -202,7 +195,7 @@ describe("express middleware", () => {
 			}
 		});
 		this.express(this.req, this.res, () => {
-			expect(this.ipRequest.isDone()).to.be.false;
+			GeoIP.get.should.not.have.been.called;
 			expect(this.res.locals).to.exist;
 			expect(this.res.locals.mscc).not.to.exist;
 			done();
@@ -216,7 +209,7 @@ describe("express middleware", () => {
 			}
 		});
 		this.express(this.req, this.res, () => {
-			expect(this.ipRequest.isDone()).to.be.false;
+			GeoIP.get.should.not.have.been.called;
 			expect(this.res.locals.mscc).to.deep.equal(require('../mock/msccResponse.consentRequired'));
 			done();
 		});
@@ -233,7 +226,7 @@ describe("koa middleware", () => {
 			ip: '127.0.0.1'
 		});
 		this.koa(this.ctx, () => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('127.0.0.1');
 			done();
 		});
 	});
@@ -246,11 +239,8 @@ describe("koa middleware", () => {
 				}
 			}
 		});
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/203.0.113.195?example.com')
-			.reply(200, 'euregion');
 		this.koa(this.ctx, () => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('203.0.113.195');
 			done();
 		});
 	});
@@ -263,11 +253,8 @@ describe("koa middleware", () => {
 				}
 			}
 		});
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/150.172.238.178?example.com')
-			.reply(200, 'euregion');
 		this.koa(this.ctx, () => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('150.172.238.178');
 			done();
 		});
 	});
@@ -280,11 +267,8 @@ describe("koa middleware", () => {
 				}
 			}
 		});
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/150.172.238.178?example.com')
-			.reply(200, 'euregion');
 		this.koa(this.ctx, () => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('150.172.238.178');
 			done();
 		});
 	});
@@ -297,11 +281,8 @@ describe("koa middleware", () => {
 				}
 			}
 		});
-		this.ipRequest = nock('http://api.wipmania.com/')
-			.get('/2001:470:1:18::125?example.com')
-			.reply(200, 'euregion');
 		this.koa(this.ctx, () => {
-			expect(this.ipRequest.isDone()).to.be.true;
+			GeoIP.get.should.have.been.calledWith('2001:470:1:18::125');
 			done();
 		});
 	});
@@ -321,7 +302,7 @@ describe("koa middleware", () => {
 			}
 		});
 		this.koa(this.ctx, () => {
-			expect(this.ipRequest.isDone()).to.be.false;
+			GeoIP.get.should.not.have.been.called;
 			expect(this.ctx.state).to.exist;
 			expect(this.ctx.state.mscc).not.to.exist;
 			done();
@@ -337,7 +318,7 @@ describe("koa middleware", () => {
 			}
 		});
 		this.koa(this.ctx, () => {
-			expect(this.ipRequest.isDone()).to.be.false;
+			GeoIP.get.should.not.have.been.called;
 			expect(this.ctx.state.mscc).to.deep.equal(require('../mock/msccResponse.consentRequired'));
 			done();
 		});
@@ -454,17 +435,21 @@ describe("handlebars helper", () => {
 		});
 	});
 	describe("logging", () => {
-		it('should call the provided log method when you make requests', (done) => {
+		it("finds the current user's country from their IP address, then queries the compliance API", () => {
+			return this.mscc.isConsentRequired('127.0.0.1').then((cookieConsent) => {
+				expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.noConsent'));
+			});
+		});
+		it('should call the provided log method when you make requests', () => {
 			this.mscc = new MSCC({
 				domain: 'example.com',
 				siteName: 'testing',
 				consentUri: 'http://test.microsoft.com/',
-				log: this.logger = sinon.spy()
+				log: this.logger = sinon.stub()
 			});
 			this.logger.should.not.have.been.called;
-			this.mscc.isConsentRequired('127.0.0.1').then(() => {
+			return this.mscc.isConsentRequired('127.0.0.1').then((cookieConsent) => {
 				this.logger.should.have.been.called;
-				done();
 			});
 		});
 	});

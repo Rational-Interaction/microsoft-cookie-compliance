@@ -2,6 +2,7 @@ const DEFAULT_CONSENT_URI = 'https://uhf.microsoft.com/en-us/shell/api/mscc';
 const CONSERVATIVE_COUNTRY = 'euregion';
 
 const request      = require('request-promise');
+const GeoIP        = require('./lib/geoip');
 const cacheManager = require('cache-manager');
 const memoryCache  = cacheManager.caching({store: 'memory', max: 100, ttl: 31*24*60*60/*seconds*/}); // 1month
 const proxyAddr    = require('proxy-addr');
@@ -12,6 +13,8 @@ let MSCC = class {
 		this.domain = options.domain;
 		this.consentUri = options.consentUri || DEFAULT_CONSENT_URI;
 		this.log = options.log || _.noop;
+		this.geoip = new GeoIP();
+		this.geoip.startAutoUpdate();
 		this.siteName = options.siteName || 'unknown';
 	}
 
@@ -21,9 +24,7 @@ let MSCC = class {
 
 			return this._isConsentRequiredForCountry(CONSERVATIVE_COUNTRY, true)
 		} else {
-			return request({
-				uri : 'http://api.wipmania.com/' + ip + '?' + this.domain
-			}).then((country) => {
+			return this.geoip.get(ip).then((country) => {
 				this.log('IP '+ip+' resolved to country '+country);
 				return this._isConsentRequiredForCountry(country);
 			}).catch(() => {
