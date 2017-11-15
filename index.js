@@ -16,6 +16,7 @@ let MSCC = class {
 		this.geoip = new GeoIP();
 		this.geoip.startAutoUpdate();
 		this.siteName = options.siteName || 'unknown';
+		this.requestTimeout = options.requestTimeout || 1500;
 	}
 
 	isConsentRequired(ip, isDebugMode) {
@@ -45,10 +46,11 @@ let MSCC = class {
 			uri += '&mscc_eudomain=true';
 		}
 
-		return memoryCache.wrap(uri, function() {
+		return memoryCache.wrap(uri, () => {
 			return request({
 				uri: uri,
-				json: true
+				json: true,
+				timeout: this.requestTimeout
 			}).promise();
 		}).then((result) => {
 			this.log('Response received from MSCC: '+JSON.stringify(result));
