@@ -13,19 +13,26 @@ let MSCC = class {
 		this.domain = options.domain;
 		this.consentUri = options.consentUri || DEFAULT_CONSENT_URI;
 		this.log = options.log || _.noop;
-		this.geoip = new GeoIP();
-		this.geoip.startAutoUpdate();
+		this.overrideGeoIP = options.overrideGeoIP;
+		if (!options.overrideGeoIP) {
+			this.geoIP = new GeoIP();
+			this.geoIP.startAutoUpdate();
+		}
 		this.siteName = options.siteName || 'unknown';
 		this.requestTimeout = options.requestTimeout || 1500;
 	}
 
 	isConsentRequired(ip, isDebugMode) {
 		if (isDebugMode) {
-			this.log('Debug mode is on, defaulting country to '+CONSERVATIVE_COUNTRY)
+			this.log('Debug mode is on, defaulting country to '+CONSERVATIVE_COUNTRY);
 
-			return this._isConsentRequiredForCountry(CONSERVATIVE_COUNTRY, true)
+			return this._isConsentRequiredForCountry(CONSERVATIVE_COUNTRY, true);
+		} else if (!this.geoIP) {
+			this.log('GEOIP is overridden by '+this.overrideGeoIP);
+
+			return this._isConsentRequiredForCountry(this.overrideGeoIP);
 		} else {
-			return this.geoip.get(ip).then((country) => {
+			return this.geoIP.get(ip).then((country) => {
 				this.log('IP '+ip+' resolved to country '+country);
 				return this._isConsentRequiredForCountry(country);
 			}).catch(() => {

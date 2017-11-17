@@ -125,6 +125,23 @@ describe("basic functionality", () => {
 			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.consentRequired'));
 		});
 	});
+	it('allows GEOIP to be overridden', () => {
+		this.mscc = new MSCC({
+			domain: 'example.com',
+			siteName: 'testing',
+			consentUri: 'http://test.microsoft.com/',
+			overrideGeoIP: 'IT'
+		});
+		this.microsoftRequest = nock('http://test.microsoft.com/')
+			.get('/?sitename=testing&domain=example.com&country=IT')
+			.reply(200, require('../mock/msccResponse.consentRequired'));
+
+		return this.mscc.isConsentRequired('127.0.0.1').then((cookieConsent) => {
+			GeoIP.get.should.not.have.been.called;
+			expect(this.microsoftRequest.isDone()).to.be.true;
+			expect(cookieConsent).to.deep.equal(require('../mock/msccResponse.consentRequired'));
+		});
+	});
 
 });
 describe("caching", () => {
