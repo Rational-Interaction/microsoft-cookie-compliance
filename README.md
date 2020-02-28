@@ -8,6 +8,7 @@ var MSCC = require('microsoft-cookie-compliance');
 var mscc = new MSCC({
   domain: 'partners.office.com', // Domain of the site
   siteName: 'Office 365 Partner Portal', // This should be same as name the site is registered with on the cookie portal
+  geoIPKey: 'secretKey', // secret key for the GEOIP database service
   overrideGeoIP: 'US', // (optional) allow GEOIP database to be skipped and hardcoded to a specific value - useful to avoid downloading the database a lot during development
   consentUri: 'https://uhf.microsoft.com/en-us/shell/api/mscc' // (optional) the locale specified is used to generate a banner with the correct language
 });

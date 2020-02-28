@@ -10,8 +10,8 @@ chai.use(require('chai-as-promised'));
 
 describe("geoip", () => {
 	beforeEach(() => {
-		this.maxmindDBRequest = nock('http://geolite.maxmind.com/')
-			.get('/download/geoip/database/GeoLite2-Country.tar.gz')
+		this.maxmindDBRequest = nock('https://download.maxmind.com/')
+			.get('/app/geoip_download?edition_id=GeoLite2-Country&license_key=secretKey&suffix=tar.gz')
 			.replyWithFile(200, __dirname + '/../mock/GeoLite2-Country.tar.gz', { 'Content-Type': 'application/gzip' });
 	});
 	afterEach(() => {
@@ -22,10 +22,10 @@ describe("geoip", () => {
 	});
 
 	describe('basic functionality', () => {
-		it ('should download and parse the file', () => {
+		it('should download and parse the file', () => {
 			expect(this.maxmindDBRequest.isDone()).not.to.be.true;
 
-			let geoip = new GeoIP();
+			let geoip = new GeoIP({ geoIPKey: 'secretKey' });
 
 			expect(this.maxmindDBRequest.isDone()).not.to.be.true;
 			return geoip.get('71.231.28.78').then((country) => {
@@ -33,7 +33,7 @@ describe("geoip", () => {
 			});
 		});
 		it('can correctly identify IPs', () => {
-			let geoip = new GeoIP();
+			let geoip = new GeoIP({ geoIPKey: 'secretKey' });
 			return Promise.props({
 				US: geoip.get('71.231.28.78'),
 				GB: geoip.get('2.31.223.212'),
@@ -51,11 +51,11 @@ describe("geoip", () => {
 			});
 		});
 		it('allows the db to be updated', () => {
-			this.updateDBRequest = nock('http://geolite.maxmind.com/')
-				.get('/download/geoip/database/GeoLite2-Country.tar.gz')
+			this.updateDBRequest = nock('https://download.maxmind.com/')
+				.get('/app/geoip_download?edition_id=GeoLite2-Country&license_key=secretKey&suffix=tar.gz')
 				.replyWithFile(200, __dirname + '/../mock/GeoLite2-Country.tar.gz', { 'Content-Type': 'application/gzip' });
 
-			let geoip = new GeoIP();
+			let geoip = new GeoIP({ geoIPKey: 'secretKey' });
 			return geoip.get('71.231.28.78').then((country) => {
 				this.lookup = geoip.lookup;
 				this.loadedPromise = geoip.loadedPromise;
@@ -77,10 +77,9 @@ describe("geoip", () => {
 		});
 		it('updates on cron', () => {
 			this.clock = sinon.useFakeTimers();
-			let geoip = new GeoIP();
+			let geoip = new GeoIP({ geoIPKey: 'secretKey' });
 			return geoip.get('71.231.28.78').then((country) => {
 				let stub = sinon.stub(geoip, 'updateDB');
-
 				geoip.startAutoUpdate();
 				stub.should.not.have.been.called;
 				return new Promise((resolve) => {
@@ -95,14 +94,14 @@ describe("geoip", () => {
 	});
 	describe('error handling', () => {
 		beforeEach(() => {
-			this.geoip = new GeoIP();
+			this.geoip = new GeoIP({ geoIPKey: 'secretKey' });
 			return this.geoip.get('71.231.28.78').then((country) => {
 				expect(this.maxmindDBRequest.isDone()).to.be.true;
 			});
 		});
 		it('correctly handles errors downloading the file', () => {
-			this.updateDBRequest = nock('http://geolite.maxmind.com/')
-				.get('/download/geoip/database/GeoLite2-Country.tar.gz')
+			this.updateDBRequest = nock('https://download.maxmind.com/')
+				.get('/app/geoip_download?edition_id=GeoLite2-Country&license_key=secretKey&suffix=tar.gz')
 				.replyWithError('something awful happened');
 			var stub = sinon.stub(this.geoip, '_downloadDBFile').callThrough();
 			return this.geoip.updateDB().catch((err) => {
@@ -119,8 +118,8 @@ describe("geoip", () => {
 			});
 		});
 		it('correctly handles errors parsing the file', () => {
-			this.updateDBRequest = nock('http://geolite.maxmind.com/')
-				.get('/download/geoip/database/GeoLite2-Country.tar.gz')
+			this.updateDBRequest = nock('https://download.maxmind.com/')
+				.get('/app/geoip_download?edition_id=GeoLite2-Country&license_key=secretKey&suffix=tar.gz')
 				.replyWithFile(500, __dirname + '/../mock/msccResponse.consentRequired.js', { 'Content-Type': 'application/gzip' });
 			var stub = sinon.stub(this.geoip, '_downloadDBFile').callThrough();
 			return this.geoip.updateDB().catch((err) => {

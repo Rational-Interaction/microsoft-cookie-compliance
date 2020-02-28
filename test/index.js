@@ -60,7 +60,8 @@ beforeEach(() => {
 	this.mscc = new MSCC({
 		domain: 'example.com',
 		siteName: 'testing',
-		consentUri: 'http://test.microsoft.com/'
+		consentUri: 'http://test.microsoft.com/',
+		geoIPKey: 'secretKey'
 	});
 	this.koa = koa(this.mscc);
 	this.express = express(this.mscc);
