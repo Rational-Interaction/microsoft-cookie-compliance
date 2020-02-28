@@ -26,7 +26,7 @@
 	"devDependencies": {
 		"chai": "^4.1.2",
 		"chai-as-promised": "^7.1.1",
-		"handlebars": "^4.0.10",
+		"handlebars": "^4.3.0",
 		"mocha": "^3.5.3",
 		"mock-require": "^2.0.2",
 		"nock": "^9.0.14",
