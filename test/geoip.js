@@ -75,21 +75,22 @@ describe("geoip", () => {
 				expect(fs.existsSync(this.file.path)).not.to.be.true
 			});
 		});
-		it('updates on cron', (done) => {
+		it('updates on cron', () => {
 			this.clock = sinon.useFakeTimers();
-			this.updateDBRequest = nock('http://geolite.maxmind.com/')
-				.get('/download/geoip/database/GeoLite2-Country.tar.gz')
-				.replyWithFile(200, __dirname + '/../mock/GeoLite2-Country.tar.gz', { 'Content-Type': 'application/gzip' });
-
 			let geoip = new GeoIP();
-			sinon.spy(GeoIP.prototype, 'updateDB');
-			geoip.startAutoUpdate();
-			geoip.updateDB.should.not.have.been.called;
-			this.clock.tick(1000*60*60*24*7);
-			geoip.updateDB.should.have.been.called;
-			geoip.stopAutoUpdate();
-			done();
+			return geoip.get('71.231.28.78').then((country) => {
+				let stub = sinon.stub(geoip, 'updateDB');
 
+				geoip.startAutoUpdate();
+				stub.should.not.have.been.called;
+				return new Promise((resolve) => {
+					setTimeout(() => resolve(stub), 1000*60*60*24*7);
+					this.clock.tick(1000*60*60*24*7);
+				});
+			}).then((stub) => {
+				stub.should.have.been.called;
+				geoip.stopAutoUpdate();
+			});
 		});
 	});
 	describe('error handling', () => {
