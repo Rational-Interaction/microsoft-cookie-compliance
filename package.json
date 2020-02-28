@@ -13,7 +13,7 @@
 	"dependencies": {
 		"bluebird": "^3.5.1",
 		"cache-manager": "^2.4.0",
-		"lodash": "^4.17.4",
+		"lodash": "^4.17.15",
 		"maxmind": "^2.3.0",
 		"proxy-addr": "^2.0.1",
 		"request": "^2.81.0",
@@ -26,8 +26,8 @@
 	"devDependencies": {
 		"chai": "^4.1.2",
 		"chai-as-promised": "^7.1.1",
-		"handlebars": "^4.0.10",
-		"iron-node": "^3.0.20",
+		"handlebars": "^4.7.3",
+		"iron-node": "^3.0.23",
 		"mocha": "^3.5.3",
 		"mock-require": "^2.0.2",
 		"nock": "^9.0.14",

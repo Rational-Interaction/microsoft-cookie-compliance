@@ -15,7 +15,7 @@ let MSCC = class {
 		this.log = options.log || _.noop;
 		this.overrideGeoIP = options.overrideGeoIP;
 		if (!options.overrideGeoIP) {
-			this.geoIP = new GeoIP();
+			this.geoIP = new GeoIP({ geoIPKey: options.geoIPKey });
 			this.geoIP.startAutoUpdate();
 		}
 		this.siteName = options.siteName || 'unknown';
