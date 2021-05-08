@@ -13,7 +13,7 @@
 	"dependencies": {
 		"bluebird": "^3.5.1",
 		"cache-manager": "^2.4.0",
-		"lodash": "^4.17.15",
+		"lodash": "^4.17.21",
 		"maxmind": "^2.3.0",
 		"proxy-addr": "^2.0.1",
 		"request": "^2.81.0",
